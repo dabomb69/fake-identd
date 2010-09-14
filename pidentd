@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -wW
 
 use strict;
 use warnings;
@@ -10,9 +10,9 @@ $SIG{HUP} = \&HUP_handler;
 
 my ( $client, $socket, $ident );
 
-getident;
+&getident;
 
-my $uid = getnoone;
+my $uid = &getnoone;
 
 $socket = IO::Socket::INET->new(
     "Proto"     => "tcp",
@@ -21,10 +21,10 @@ $socket = IO::Socket::INET->new(
     "Listen"    => 1
 ) or die "Error: $!\n";
 
-$> = $uid;
-$< = $uid;
-$( = $uid;
-$) = $uid;
+#$> = $uid;
+#$< = $uid;
+#$( = $uid;
+#$) = $uid;
 
 while ( $client = $socket->accept() ) {
     my $host = $client->peerhost();
@@ -37,13 +37,14 @@ while ( $client = $socket->accept() ) {
         $ident =~ s/^\s+//;
         $ident =~ s/\s+$//;
         print $client "$data : USERID : UNIX : $ident\n";
-        close $client;
+        print "$data : USERID : UNIX : $ident\n";
+		close $client;
     }
 }
 undef $client if $client;
 
 sub getident {
-    open( CONFIG, '/usr/local/pidentd.conf' ) or die "Cannot open /usr/local/pidentd.conf: $!\n";
+    open( CONFIG, '/usr/local/etc/pidentd.conf' ) or die "Cannot open /usr/local/pidentd.conf: $!\n";
     $ident = <CONFIG>;
     chomp $ident;
 }
@@ -58,7 +59,7 @@ sub getnoone {
     for (@tmp) {
         chomp;
         if ( $_ =~ /^nobody/ ) {
-            local @pie = split( /:/, $_ );
+            my @pie = split( /:/, $_ );
             return $pie[2];
         }
     }
