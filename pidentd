@@ -6,6 +6,10 @@ use IO::File;
 use IO::Socket;
 use Sys::Syslog;
 
+sub HUP_handler {
+    &getident;
+}
+
 $SIG{HUP} = \&HUP_handler;
 
 my ( $client, $socket, $ident );
@@ -21,10 +25,10 @@ $socket = IO::Socket::INET->new(
     "Listen"    => 1
 ) or die "Error: $!\n";
 
-#$> = $uid;
-#$< = $uid;
-#$( = $uid;
-#$) = $uid;
+$> = $uid;
+$< = $uid;
+$( = $uid;
+$) = $uid;
 
 while ( $client = $socket->accept() ) {
     my $host = $client->peerhost();
@@ -47,10 +51,6 @@ sub getident {
     open( CONFIG, '/usr/local/etc/pidentd.conf' ) or die "Cannot open /usr/local/pidentd.conf: $!\n";
     $ident = <CONFIG>;
     chomp $ident;
-}
-
-sub HUP_handler {
-    &getident;
 }
 
 sub getnoone {
