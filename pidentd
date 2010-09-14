@@ -12,7 +12,6 @@ $socket = IO::Socket::INET->new(
         "LocalPort" => 113,
         Reuse => 1,
         "Listen" => 1) or die "Error: $!\n";
-print "using ident: $ident\n"; 
 while ($client=$socket->accept()) {
         my $host=$client->peerhost();
         print "connection: ", $host . "\n";
