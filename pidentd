@@ -2,28 +2,65 @@
 
 use strict;
 use warnings;
+use IO::File;
 use IO::Socket;
+use Sys::Syslog;
 
-my($client,$socket);
-if (!defined($ARGV[0])) { die "Please supply ident\n"; }
-my $ident=$ARGV[0];
+$SIG{HUP} = \&HUP_handler;
+
+my ( $client, $socket, $ident );
+
+getident;
+
+my $uid = getnoone;
+
 $socket = IO::Socket::INET->new(
-        "Proto" => "tcp",
-        "LocalPort" => 113,
-        Reuse => 1,
-        "Listen" => 1) or die "Error: $!\n";
-while ($client=$socket->accept()) {
-        my $host=$client->peerhost();
-        print "connection: ", $host . "\n";
-	my $data = <$client>;
-	if ($data) {
-		print "$host recv: $data\n";
-		$data =~ s/^\s+//;
-		$data =~ s/\s+$//;
-		$ident =~ s/^\s+//;
-		$ident =~ s/\s+$//;
-		print $client "$data : USERID : UNIX : $ident\n";
-		close $client;
-	}
+    "Proto"     => "tcp",
+    "LocalPort" => 113,
+    Reuse       => 1,
+    "Listen"    => 1
+) or die "Error: $!\n";
+
+$> = $uid;
+$< = $uid;
+$( = $uid;
+$) = $uid;
+
+while ( $client = $socket->accept() ) {
+    my $host = $client->peerhost();
+    print "connection: ", $host . "\n";
+    my $data = <$client>;
+    if ($data) {
+        print "$host recv: $data\n";
+        $data  =~ s/^\s+//;
+        $data  =~ s/\s+$//;
+        $ident =~ s/^\s+//;
+        $ident =~ s/\s+$//;
+        print $client "$data : USERID : UNIX : $ident\n";
+        close $client;
+    }
 }
 undef $client if $client;
+
+sub getident {
+    open( CONFIG, '/usr/local/pidentd.conf' ) or die "Cannot open /usr/local/pidentd.conf: $!\n";
+    $ident = <CONFIG>;
+    chomp $ident;
+}
+
+sub HUP_handler {
+    &getident;
+}
+
+sub getnoone {
+    open( PASSWD, '/etc/passwd' ) or die "Cannot open /etc/passwd: $!\n";
+    my @tmp = <PASSWD>;
+    for (@tmp) {
+        chomp;
+        if ( $_ =~ /^nobody/ ) {
+            local @pie = split( /:/, $_ );
+            return $pie[2];
+        }
+    }
+}
+
